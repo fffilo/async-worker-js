@@ -35,4 +35,4 @@ Execute 5 functions (fn1 - fn5), each in different animation frame.
     }
     work.start()
 
-See [worker](https://jsfiddle.net/zmoxe2jk/2/) in action!
+See [worker](https://jsfiddle.net/zmoxe2jk/7/) in action!
