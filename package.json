@@ -1,0 +1,22 @@
+{
+  "name": "async-worker-js",
+  "title": "JavaScript Async Worker",
+  "description": "JavaScript Async Worker",
+  "version": "0.1.0",
+  "main": "src/async-worker.js",
+  "homepage": "https://github.com/fffilo/async-worker-js",
+  "authors": [
+    "Franjo Filo <fffilo666@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fffilo/async-worker-js.git"
+  },
+  "keywords": [
+    "javascript",
+    "async",
+    "worker",
+    "thread",
+    "requestAnimationFrame"
+  ]
+}

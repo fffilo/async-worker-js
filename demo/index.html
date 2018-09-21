@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Document</title>
+        <style>
+            html, body { margin: 0; padding: 0; font-size: 16px; color: #666; text-align: center; }
+            p { margin: 1em 0; }
+            button { margin: 0.5em; padding: 0.5em 1em; border: none; background: #ddd; cursor: pointer; border-radius: 0.25em; color: inherit; outline: none; }
+            button[disabled] { pointer-events: none; opacity: 0.5; }
+            button:focus { outline: none; }
+            button::-moz-focus-inner { border: 0; }
+            .box { width: 10em; height: 10em; margin: 1em 2em; background: #ddd; animation: animate 1s linear infinite alternate; }
+            @keyframes animate {
+                from { margin-left: 1em; }
+                to { margin-left: calc(100% - 12em); }
+            }
+        </style>
+    </head>
+    <body>
+        <p>Click button to do some heavy lifting. See results in console.</p>
+        <div class="container">
+            <div class="box"></div>
+        </div>
+        <p>
+            <button type="button" tabindex="-1" data-work="main-thread">MainThread</button>
+            <button type="button" tabindex="-1" data-work="async-worker">AsyncWorker</button>
+        </p>
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+        <script src="../src/async-worker.js"></script>
+        <script>
+            ;(function() {
+                var heavyLifting = function() {
+                    for (var i = 0; i < 1000000; i++) {
+                        Math.random() * Math.PI;
+                    }
+                }
+
+                var $button = $("button[data-work]");
+                $button.on("click", function(e) {
+                    $button.attr("disabled", "disabled");
+
+                    var work = $(this).attr("data-work") || "none";
+                    console.log(work, "started");
+                    console.time(work);
+
+                    if (work === "main-thread") {
+                        for (var i = 0; i < 100; i++) {
+                            heavyLifting();
+                        }
+                        $button.removeAttr("disabled");
+                        console.timeEnd(work);
+                    }
+                    else if (work === "async-worker") {
+                        var w = new AsyncWorker();
+                        for (var i = 0; i < 100; i++) {
+                            w.append(heavyLifting);
+                        }
+                        w.onComplete = function() {
+                            $button.removeAttr("disabled");
+                            console.timeEnd(work);
+                        }
+                        w.start();
+                    }
+                    else
+                        console.timeEnd(work);
+                });
+            })();
+        </script>
+    </body>
+</html>
