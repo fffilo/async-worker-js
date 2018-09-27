@@ -273,10 +273,11 @@
                 var fn = this._jobList.shift();
                 fn.call(this);
 
+                this._jobsComplete++;
+                index++;
+
                 if (this._emit("job") === false)
                     return this._break();
-
-                index++;
             }
 
             if (this._emit("frameRequest") === false)
