@@ -270,8 +270,10 @@
 
             var index = 0;
             while (this._jobList.length && index < this.jobsPerFrameRequest) {
-                var fn = this._jobList.shift();
-                fn.call(this);
+                var job = this._jobList.shift();
+                var fn = job[0];
+                var args = job[1];
+                fn.apply(this, args);
 
                 this._jobsComplete++;
                 index++;
@@ -355,7 +357,9 @@
         },
 
         /**
-         * Append function to job list
+         * Append function to job list (any
+         * additional argument will be passed
+         * to function)
          *
          * @param  {Function} fn [description]
          * @return {Void}
@@ -363,7 +367,7 @@
         append: function(fn) {
             this._checkBusy();
 
-            this._jobList.push(fn);
+            this._jobList.push([ fn, Array.prototype.slice.call(arguments, 1) ]);
             this._jobsCount = this._jobList.length;
         },
 
