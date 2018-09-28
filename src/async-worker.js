@@ -47,6 +47,7 @@
          */
         _init: function() {
             this._busy = false;
+            this._data = {};
             this._jobList = [];
             this._jobsPerFrameRequest = 1;
             this._interval = -1
@@ -67,6 +68,17 @@
          */
         get busy() {
             return this._busy;
+        },
+
+        /**
+         * Data property getter
+         * (object that you can use
+         * accros events)
+         *
+         * @return {Boolean}
+         */
+        get data() {
+            return this._data;
         },
 
         /**
@@ -230,19 +242,20 @@
         },
 
         /**
-         * Emit signal
+         * Emit event
          *
-         * @param  {String} signal
+         * @param  {String} evenName
          * @return {Mixed}
          */
-        _emit: function(signal) {
-            var name = "on" + signal.charAt(0).toUpperCase() + signal.slice(1);
+        _emit: function(evenName) {
+            var name = "on" + evenName.charAt(0).toUpperCase() + evenName.slice(1);
             var fn = this[name];
 
             if (typeof fn === "function")
                 fn.call(this, {
+                    evenName: evenName,
                     busy: this.busy,
-                    signal: signal,
+                    data: this.data,
                     interval: this._interval,
                     jobsComplete: this._jobsComplete,
                     jobsCount: this._jobsCount,
