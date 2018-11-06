@@ -244,16 +244,16 @@
         /**
          * Emit event
          *
-         * @param  {String} evenName
+         * @param  {String} eventName
          * @return {Mixed}
          */
-        _emit: function(evenName) {
-            var name = "on" + evenName.charAt(0).toUpperCase() + evenName.slice(1);
+        _emit: function(eventName) {
+            var name = "on" + eventName.charAt(0).toUpperCase() + eventName.slice(1);
             var fn = this[name];
 
             if (typeof fn === "function")
                 fn.call(this, {
-                    evenName: evenName,
+                    eventName: eventName,
                     busy: this.busy,
                     data: this.data,
                     interval: this._interval,
