@@ -263,16 +263,6 @@
         },
 
         /**
-         * Throw exception if worker is busy
-         *
-         * @return {Void}
-         */
-        _checkBusy: function() {
-            if (this.busy)
-                throw "AsyncWorker: worker is busy."
-        },
-
-        /**
          * Do work (iterate job list)
          *
          * @return {Number}
@@ -359,11 +349,17 @@
         /**
          * Clear job list
          *
+         * Important: if worker is running this will
+         * automatically stop it (without emiting
+         * any events)
+         *
          * @return {Void}
          */
         clear: function() {
-            this._checkBusy();
+            clearInterval(this._interval);
 
+            this._busy = false;
+            this._interval = -1
             this._jobList = [];
             this._jobsComplete = 0;
             this._jobsCount = this._jobList.length;
@@ -378,8 +374,6 @@
          * @return {Void}
          */
         append: function(fn) {
-            this._checkBusy();
-
             this._jobList.push([ fn, Array.prototype.slice.call(arguments, 1) ]);
             this._jobsCount = this._jobList.length;
         },
@@ -390,7 +384,8 @@
          * @return {Void}
          */
         start: function() {
-            this._checkBusy();
+            if (this.busy)
+                return;
 
             this._busy = true;
             this._emit("start");
