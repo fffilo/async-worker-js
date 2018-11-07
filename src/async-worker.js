@@ -375,7 +375,7 @@
          */
         append: function(fn) {
             this._jobList.push([ fn, Array.prototype.slice.call(arguments, 1) ]);
-            this._jobsCount = this._jobList.length;
+            this._jobsCount++;
         },
 
         /**
