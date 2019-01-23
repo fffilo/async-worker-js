@@ -59,6 +59,26 @@
             this._onJob = this._noop;
             this._onFrameRequest = this._noop;
             this._onComplete = this._noop;
+            this._handleVisibilityChangeBind = this._handleVisibilityChange.bind(this);
+        },
+
+        /**
+         * Destructor
+         *
+         * @return {Void}
+         */
+        destroy: function() {
+            this.stop();
+            this.clear();
+        },
+
+        /**
+         * Is browser active
+         *
+         * @return {Boolean}
+         */
+        get browserActive() {
+            return document.visibilityState === "visible" ? true : false;
         },
 
         /**
@@ -271,8 +291,16 @@
             if (!this.busy)
                 return this._stop();
 
+            // on modern browser inactive tab allowes only
+            // one setTimeout function per second, so we're
+            // increasing jobs per interval to compensate
+            // the lost (since tab is not active user won't
+            // see unresponsive page)
+            var count = this.jobsPerFrameRequest * (this.browserActive ? 1 : 60);
             var index = 0;
-            while (this._jobList.length && index < this.jobsPerFrameRequest) {
+
+            // execute jobs
+            while (this._jobList.length && index < count) {
                 var job = this._jobList.shift();
                 var fn = job[0];
                 var args = job[1];
@@ -285,6 +313,7 @@
                     return this._break();
             }
 
+            // break, continue or complete
             if (this._emit("frameRequest") === false)
                 return this._break();
             else if (this._jobList.length)
@@ -300,7 +329,7 @@
          * @return {Number}
          */
         _continue: function() {
-            if (typeof window.requestAnimationFrame === "function")
+            if (this.browserActive && typeof window.requestAnimationFrame === "function")
                 this._interval = window.requestAnimationFrame(this._worker.bind(this));
             else
                 this._interval = window.setTimeout(this._worker.bind(this), 20);
@@ -347,6 +376,26 @@
         },
 
         /**
+         * Browser visibility change event handler:
+         * method window.requestAnimationFrame won't
+         * fire while browser is inactive, so we need
+         * to replace it with window.setTimeout when
+         * visibility changes from visible to hidden
+         *
+         * @param  {Event} e
+         * @return {Void}
+         */
+        _handleVisibilityChange: function(e) {
+            if (!this.busy || this.browserActive || typeof window.requestAnimationFrame !== "function")
+                return;
+
+            window.cancelAnimationFrame(this._interval);
+            window.clearInterval(this._interval);
+
+            this._continue();
+        },
+
+        /**
          * Clear job list
          *
          * Important: if worker is running this will
@@ -356,7 +405,12 @@
          * @return {Void}
          */
         clear: function() {
-            clearInterval(this._interval);
+            if (typeof window.requestAnimationFrame === "function")
+                window.cancelAnimationFrame(this._interval);
+            if (typeof window.clearInterval === "function")
+                window.clearInterval(this._interval);
+
+            document.removeEventListener("visibilitychange", this._handleVisibilityChangeBind);
 
             this._busy = false;
             this._interval = -1
@@ -370,7 +424,7 @@
          * additional argument will be passed
          * to function)
          *
-         * @param  {Function} fn [description]
+         * @param  {Function} fn
          * @return {Void}
          */
         append: function(fn) {
@@ -387,6 +441,8 @@
             if (this.busy)
                 return;
 
+            document.addEventListener("visibilitychange", this._handleVisibilityChangeBind);
+
             this._busy = true;
             this._emit("start");
             this._continue();
@@ -400,6 +456,8 @@
         stop: function() {
             if (!this.busy)
                 return;
+
+            document.removeEventListener("visibilitychange", this._handleVisibilityChangeBind);
 
             this._busy = false;
         },
