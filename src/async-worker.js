@@ -58,6 +58,7 @@
             this._eventListener = {};
             this._jobList = [];
             this._jobsPerFrameRequest = 1;
+            this._workOnInactive = true;
             this._interval = -1
             this._jobsComplete = 0;
             this._jobsCount = 0;
@@ -123,6 +124,25 @@
         },
 
         /**
+         * WorkOnInactive property getter
+         *
+         * @return {Number}
+         */
+        get workOnInactive() {
+            return this._workOnInactive;
+        },
+
+        /**
+         * WorkOnInactive property setter
+         *
+         * @param  {Number} value
+         * @return {Void}
+         */
+        set workOnInactive(value) {
+            this._workOnInactive = !!value;
+        },
+
+        /**
          * Emit event
          *
          * @param  {String} eventName
@@ -165,7 +185,7 @@
             // increasing jobs per interval to compensate
             // the lost (since tab is not active user won't
             // see unresponsive page)
-            var count = this.jobsPerFrameRequest * (this.browserActive ? 1 : 50);
+            var count = this.jobsPerFrameRequest * (!this.workOnInactive || this.browserActive ? 1 : 50);
             var index = 0;
 
             // execute jobs
