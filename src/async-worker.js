@@ -41,6 +41,13 @@
     _extend(AsyncWorker.prototype, {
 
         /**
+         * Valid signals
+         *
+         * @type {Array}
+         */
+        _signals: [ "start", "stop", "break", "job", "framerequest", "complete" ],
+
+        /**
          * Constructor
          *
          * @return {Void}
@@ -48,17 +55,12 @@
         _init: function() {
             this._busy = false;
             this._data = {};
+            this._eventListener = {};
             this._jobList = [];
             this._jobsPerFrameRequest = 1;
             this._interval = -1
             this._jobsComplete = 0;
             this._jobsCount = 0;
-            this._onStart = this._noop;
-            this._onStop = this._noop;
-            this._onBreak = this._noop;
-            this._onJob = this._noop;
-            this._onFrameRequest = this._noop;
-            this._onComplete = this._noop;
             this._handleVisibilityChangeBind = this._handleVisibilityChange.bind(this);
         },
 
@@ -121,165 +123,28 @@
         },
 
         /**
-         * OnStart property getter
-         *
-         * @return {Function}
-         */
-        get onStart() {
-            return this._onStart;
-        },
-
-        /**
-         * OnStart property setter
-         *
-         * @param  {Mixed} value
-         * @return {Void}
-         */
-        set onStart(value) {
-            if (typeof value === "function")
-                this._onStart = value;
-            else
-                this._onStart = this._noop;
-        },
-
-        /**
-         * onStop property getter
-         *
-         * @return {Function}
-         */
-        get onStop() {
-            return this._onStop;
-        },
-
-        /**
-         * OnStop property setter
-         *
-         * @param  {Mixed} value
-         * @return {Void}
-         */
-        set onStop(value) {
-            if (typeof value === "function")
-                this._onStop = value;
-            else
-                this._onStop = this._noop;
-        },
-
-        /**
-         * onBreak property getter
-         *
-         * @return {Function}
-         */
-        get onBreak() {
-            return this._onBreak;
-        },
-
-        /**
-         * OnBreak property setter
-         *
-         * @param  {Mixed} value
-         * @return {Void}
-         */
-        set onBreak(value) {
-            if (typeof value === "function")
-                this._onBreak = value;
-            else
-                this._onBreak = this._noop;
-        },
-
-        /**
-         * OnJob property getter
-         *
-         * @return {Function}
-         */
-        get onJob() {
-            return this._onJob;
-        },
-
-        /**
-         * OnJob property setter
-         *
-         * @param  {Mixed} value
-         * @return {Void}
-         */
-        set onJob(value) {
-            if (typeof value === "function")
-                this._onJob = value;
-            else
-                this._onJob = this._noop;
-        },
-
-        /**
-         * OnFrameRequest property getter
-         *
-         * @return {Function}
-         */
-        get onFrameRequest() {
-            return this._onFrameRequest;
-        },
-
-        /**
-         * OnFrameRequest property setter
-         *
-         * @param  {Mixed} value
-         * @return {Void}
-         */
-        set onFrameRequest(value) {
-            if (typeof value === "function")
-                this._onFrameRequest = value;
-            else
-                this._onFrameRequest = this._noop;
-        },
-
-        /**
-         * onComplete property getter
-         *
-         * @return {Function}
-         */
-        get onComplete() {
-            return this._onComplete;
-        },
-
-        /**
-         * OnComplete property setter
-         *
-         * @param  {Mixed} value
-         * @return {Void}
-         */
-        set onComplete(value) {
-            if (typeof value === "function")
-                this._onComplete = value;
-            else
-                this._onComplete = this._noop;
-        },
-
-        /**
-         * Empty function
-         *
-         * @return {Void}
-         */
-        _noop: function() {
-            // pass
-        },
-
-        /**
          * Emit event
          *
          * @param  {String} eventName
-         * @return {Mixed}
+         * @return {Void}
          */
         _emit: function(eventName) {
-            var name = "on" + eventName.charAt(0).toUpperCase() + eventName.slice(1);
-            var fn = this[name];
+            if (!this._eventListener[eventName])
+                return;
 
-            if (typeof fn === "function")
-                fn.call(this, {
-                    eventName: eventName,
-                    busy: this.busy,
-                    data: this.data,
-                    interval: this._interval,
-                    jobsComplete: this._jobsComplete,
-                    jobsCount: this._jobsCount,
-                });
+            var event = {
+                eventName: eventName,
+                busy: this.busy,
+                data: this.data,
+                interval: this._interval,
+                jobsComplete: this._jobsComplete,
+                jobsCount: this._jobsCount,
+            }
+            Object.freeze(event);
+
+            for (var i = 0; i < this._eventListener[eventName].length; i++) {
+                this._eventListener[eventName][i].call(this, event);
+            }
         },
 
         /**
@@ -296,7 +161,7 @@
             // increasing jobs per interval to compensate
             // the lost (since tab is not active user won't
             // see unresponsive page)
-            var count = this.jobsPerFrameRequest * (this.browserActive ? 1 : 60);
+            var count = this.jobsPerFrameRequest * (this.browserActive ? 1 : 50);
             var index = 0;
 
             // execute jobs
@@ -314,7 +179,7 @@
             }
 
             // break, continue or complete
-            if (this._emit("frameRequest") === false)
+            if (this._emit("framerequest") === false)
                 return this._break();
             else if (this._jobList.length)
                 return this._continue();
@@ -329,7 +194,7 @@
          * @return {Number}
          */
         _continue: function() {
-            if (this.browserActive && typeof window.requestAnimationFrame === "function")
+            if (this.browserActive)
                 this._interval = window.requestAnimationFrame(this._worker.bind(this));
             else
                 this._interval = window.setTimeout(this._worker.bind(this), 20);
@@ -386,7 +251,7 @@
          * @return {Void}
          */
         _handleVisibilityChange: function(e) {
-            if (!this.busy || this.browserActive || typeof window.requestAnimationFrame !== "function")
+            if (!this.busy || this.browserActive)
                 return;
 
             window.cancelAnimationFrame(this._interval);
@@ -405,10 +270,8 @@
          * @return {Void}
          */
         clear: function() {
-            if (typeof window.requestAnimationFrame === "function")
-                window.cancelAnimationFrame(this._interval);
-            if (typeof window.clearInterval === "function")
-                window.clearInterval(this._interval);
+            window.cancelAnimationFrame(this._interval);
+            window.clearInterval(this._interval);
 
             document.removeEventListener("visibilitychange", this._handleVisibilityChangeBind);
 
@@ -460,6 +323,42 @@
             document.removeEventListener("visibilitychange", this._handleVisibilityChangeBind);
 
             this._busy = false;
+        },
+
+        /**
+         * Add event listener
+         *
+         * @param {String}   eventName
+         * @param {Function} callback
+         * @return {Void}
+         */
+        addEventListener: function(eventName, callback) {
+            if (this._signals.indexOf(eventName) === -1)
+                throw "AsyncWorker: Failed to execute 'addEventListener', the eventName argument must be valid signal (" + this._signals.join(",") + ").";
+            if (typeof callback !== "function")
+                throw "AsyncWorker: Failed to execute 'addEventListener', the callback argument must be function.";
+
+            if (!this._eventListener[eventName])
+                this._eventListener[eventName] = [];
+
+            this._eventListener[eventName].push(callback);
+        },
+
+        /**
+         * Remove event listener
+         *
+         * @param {String}   eventName
+         * @param {Function} callback
+         * @return {Void}
+         */
+        removeEventListener: function(eventName, callback) {
+            if (!this._eventListener[eventName] || typeof callback !== "function")
+                return;
+
+            for (var i = this._eventListener[eventName].length - 1; i >= 0; i--) {
+                if (this._eventListener[eventName][i] === callback)
+                    this._eventListener[eventName].splice(i, 1);
+            }
         },
 
     });
