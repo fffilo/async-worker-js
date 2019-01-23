@@ -126,7 +126,7 @@
          * Emit event
          *
          * @param  {String} eventName
-         * @return {Void}
+         * @return {Mixed}
          */
         _emit: function(eventName) {
             if (!this._eventListener[eventName])
@@ -142,9 +142,13 @@
             }
             Object.freeze(event);
 
+            var result;
             for (var i = 0; i < this._eventListener[eventName].length; i++) {
-                this._eventListener[eventName][i].call(this, event);
+                if (this._eventListener[eventName][i].call(this, event) === false)
+                    result = false;
             }
+
+            return result;
         },
 
         /**
@@ -174,8 +178,13 @@
                 this._jobsComplete++;
                 index++;
 
+                // prevent default
                 if (this._emit("job") === false)
                     return this._break();
+
+                // browser visibility change
+                if (this.browserActive && index >= this.jobsPerFrameRequest)
+                    break;
             }
 
             // break, continue or complete
