@@ -193,6 +193,7 @@
                 var job = this._jobList.shift();
                 var fn = job[0];
                 var args = job[1];
+                //var priority = job[2];
                 fn.apply(this, args);
 
                 this._jobsComplete++;
@@ -312,15 +313,19 @@
         },
 
         /**
-         * Append function to job list (any
-         * additional argument will be passed
-         * to function)
+         * Append function to job list
          *
          * @param  {Function} fn
+         * @param  {Array}    args     (optional)
+         * @param  {Number}   priority (optional)
          * @return {Void}
          */
-        append: function(fn) {
-            this._jobList.push([ fn, Array.prototype.slice.call(arguments, 1) ]);
+        append: function(fn, args, priority) {
+            this._jobList.push([ fn, args || [], priority*1 || 0 ]);
+            this._jobList.sort(function(a, b) {
+                return a[1] - b[1];
+            });
+
             this._jobsCount++;
         },
 
