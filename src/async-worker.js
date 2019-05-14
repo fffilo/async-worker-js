@@ -323,7 +323,7 @@
         append: function(fn, args, priority) {
             this._jobList.push([ fn, args || [], priority*1 || 0 ]);
             this._jobList.sort(function(a, b) {
-                return a[1] - b[1];
+                return a[2] - b[2];
             });
 
             this._jobsCount++;
