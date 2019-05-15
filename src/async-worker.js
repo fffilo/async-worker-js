@@ -57,7 +57,6 @@
             this._data = {};
             this._eventListener = {};
             this._jobList = [];
-            this._jobsPerFrameRequest = 1;
             this._workOnInactive = true;
             this._interval = -1
             this._jobsComplete = 0;
@@ -102,25 +101,6 @@
          */
         get data() {
             return this._data;
-        },
-
-        /**
-         * JobsPerFrameRequest property getter
-         *
-         * @return {Number}
-         */
-        get jobsPerFrameRequest() {
-            return this._jobsPerFrameRequest;
-        },
-
-        /**
-         * JobsPerFrameRequest property setter
-         *
-         * @param  {Number} value
-         * @return {Void}
-         */
-        set jobsPerFrameRequest(value) {
-            this._jobsPerFrameRequest = Math.max(value*1 || 0, 1);
         },
 
         /**
@@ -185,26 +165,50 @@
             // increasing jobs per interval to compensate
             // the lost (since tab is not active user won't
             // see unresponsive page)
-            var count = this.jobsPerFrameRequest * (!this.workOnInactive || this.browserActive ? 1 : 50);
+            var weightMax = !this.workOnInactive || this.browserActive ? 1 : 25;
+
+            // get number of jobs to execute (where their
+            // total weight is less than weightMax)
+            var weightTotal = 0;
             var index = 0;
+            var count = 0;
+            while (count < this._jobList.length) {
+                var job = this._jobList[index];
+                var weight = job[2];
+                if (weight + weightTotal > weightMax)
+                    break;
+
+                index++;
+                count++;
+                weightTotal += weight;
+            }
 
             // execute jobs
+            weightTotal = 0;
+            index = 0;
             while (this._jobList.length && index < count) {
                 var job = this._jobList.shift();
                 var fn = job[0];
                 var args = job[1];
-                //var priority = job[2];
+                var weight = job[2];
+                //var priority = job[3];
+
+                // execute
                 fn.apply(this, args);
 
+                // increase
                 this._jobsComplete++;
                 index++;
+                weightTotal += weight;
 
-                // prevent default
+                // default prevented
                 if (this._emit("job") === false)
                     return this._break();
 
                 // browser visibility change
-                if (this.browserActive && index >= this.jobsPerFrameRequest)
+                if (this.browserActive && weightTotal > 1)
+                    // @todo - will document visibilityState
+                    // change trigger while looping?
                     break;
             }
 
@@ -315,15 +319,43 @@
         /**
          * Append function to job list
          *
+         * Add function (fn) and it's arguments (args)
+         * to execute on job start...
+         *
+         * If you want to execute more than one function
+         * per interval you can provide weight argument.
+         * For example:
+         *
+         *      worker.append(callback, [], 0.5);
+         *      worker.append(callback, [], 0.5);
+         *      worker.append(callback, [], 0.25);
+         *      worker.append(callback, [], 0.25);
+         *      worker.append(callback, [], 0.25);
+         *      worker.append(callback, [], 0.25);
+         *
+         * ...will execute first two functions in one
+         * interval, and the rest in another.
+         *
+         * The jobList will be sorted (ascending)
+         * according to priority argument.
+         *
          * @param  {Function} fn
          * @param  {Array}    args     (optional)
+         * @param  {Number}   weight   (optional)
          * @param  {Number}   priority (optional)
          * @return {Void}
          */
-        append: function(fn, args, priority) {
-            this._jobList.push([ fn, args || [], priority*1 || 0 ]);
+        append: function(fn, args, weight, priority) {
+            args = args || [];
+            weight = weight*1 || 0;
+            priority = priority*1 || 0;
+
+            if (weight <= 0 || weight > 1)
+                weight = 1;
+
+            this._jobList.push([ fn, args, weight, priority ]);
             this._jobList.sort(function(a, b) {
-                return a[2] - b[2];
+                return a[3] - b[3];
             });
 
             this._jobsCount++;
