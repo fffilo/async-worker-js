@@ -26,7 +26,7 @@
          *
          * @type {Array}
          */
-        _signals: [ "start", "stop", "break", "job", "framerequest", "complete" ],
+        _signals: [ "start", "stop", "break", "job", "framerequest", "complete", "error" ],
 
         /**
          * Constructor
@@ -34,6 +34,7 @@
          * @return {Void}
          */
         _init: function() {
+            this._error = null;
             this._busy = false;
             this._data = {};
             this._eventListener = {};
@@ -62,6 +63,15 @@
          */
         get browserActive() {
             return document.visibilityState === "visible" ? true : false;
+        },
+
+        /**
+         * Error property getter
+         *
+         * @return {Error}
+         */
+        get error() {
+            return this._error;
         },
 
         /**
@@ -175,7 +185,19 @@
                 //var priority = job[3];
 
                 // execute
-                fn.apply(this, args);
+                try {
+                    fn.apply(this, args);
+                } catch(e) {
+                    // job not executed, add it back
+                    // to jobList
+                    this._jobList.unshift(job);
+
+                    // store and emit error
+                    this._error = e;
+                    this._emit("error");
+
+                    return;
+                }
 
                 // increase
                 this._jobsComplete++;
@@ -290,6 +312,7 @@
 
             document.removeEventListener("visibilitychange", this._handleVisibilityChangeBind);
 
+            this._error = null;
             this._busy = false;
             this._interval = -1
             this._jobList = [];
