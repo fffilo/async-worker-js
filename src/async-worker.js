@@ -4,24 +4,6 @@
     "use strict";
 
     /**
-     * Extend objects (additional arguments)
-     * into target respecting getters and
-     * setters
-     *
-     * @param  {Object} target
-     * @return {Object}
-     */
-    var _extend = function(target) {
-        Array.prototype.slice.call(arguments, 1).forEach(function(item) {
-            for (var prop in item) {
-                Object.defineProperty(target, prop, Object.getOwnPropertyDescriptor(item, prop));
-            }
-        });
-
-        return target;
-    }
-
-    /**
      * Initialize AsyncWorker
      *
      * @return {Void}
@@ -38,8 +20,7 @@
      *
      * @type {Object}
      */
-    _extend(AsyncWorker.prototype, {
-
+    AsyncWorker.prototype = {
         /**
          * Valid signals
          *
@@ -426,8 +407,10 @@
                     this._eventListener[eventName].splice(i, 1);
             }
         },
+    };
 
-    });
+    // re-assing constructor
+    AsyncWorker.prototype.constructor = AsyncWorker;
 
     // globalize
     window.AsyncWorker = AsyncWorker;
